@@ -13,14 +13,7 @@ ELASTIC_IP="$2"
 # if not, do this: sudo chmod 711 packetbeat.yml
 
 PACKETBEAT_YML="/home/ubuntu/packetbeat.yml"
-PACKETBEAT_DIR="/etc/packetbeat/"
-# check if this directtory exists. If it does, then it must have been installed before
-CHECK_CMD="[ -d '/etc/packetbeat' ] && echo 'Yes'"
-
-INSTALL_PACKETBEAT="sudo apt-get install libpcap0.8 && curl -L -O https://artifacts.elastic.co/downloads/beats/packetbeat/packetbeat-5.5.2-amd64.deb && sudo dpkg -i packetbeat-5.5.2-amd64.deb"
-
-CP_CMD="sudo cp /home/ubuntu/packetbeat.yml /etc/packetbeat/packetbeat.yml"
-START_PACKETBEAT_CMD="sudo /etc/init.d/packetbeat start"
+DOCKER_CMD="sudo docker run -d -v /home/ubuntu/packetbeat.yml:/usr/share/packetbeat/packetbeat.yml --restart always --cap-add=NET_ADMIN --net=host --name packetbeat docker.elastic.co/beats/packetbeat:5.5.2"
 
 # First, insert ELASTIC_IP
 sed -i "s/hosts: \[\".*:9200\"\]/hosts: \[\"$ELASTIC_IP:9200\"\]/g" $PACKETBEAT_YML
@@ -47,30 +40,13 @@ do
     # send the packetbeat.yml file to the node
     sudo docker-machine scp $PACKETBEAT_YML $hostname:~
 
-    # check if packetbeat is installed
-    check_exists=`sudo docker-machine ssh $hostname $CHECK_CMD`
-    if [ "$check_exists" != "Yes" ]
-    then     
-        # install packetbeat service on the node
-        sudo docker-machine ssh $hostname $INSTALL_PACKETBEAT 
-    fi
-
-    # copy it to the appropriate /etc/packetbeat/ dir
-    sudo docker-machine ssh $hostname $CP_CMD
-
-    # start the packetbeat service 
-    sudo docker-machine ssh $hostname $START_PACKETBEAT_CMD
+    # start the packetbeat docker container 
+    sudo docker-machine ssh $hostname $DOCKER_CMD 
     
-    echo "Started Packetbeat service for node: $hostname"
+    echo "Started Packetbeat container for node: $hostname"
 done
 
 #We still need to start the packetbeat container for this node itself
-if [ ! -d "$PACKETBEAT_DIR" ];then    
-    #install packetbeat service on the node
-    sudo apt-get install libpcap0.8 && curl -L -O https://artifacts.elastic.co/downloads/beats/packetbeat/packetbeat-5.5.2-amd64.deb && sudo dpkg -i packetbeat-5.5.2-amd64.deb
-fi
+$DOCKER_CMD
 
-$CP_CMD
-$START_PACKETBEAT_CMD
-
-echo "Successfully deployed Packetbeat on all the nodes"
+echo "Successfully deployed Packetbeat on all the containers"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-STOP_PACKETBEAT="sudo /etc/init.d/packetbeat stop"
+RM_DOCKER="sudo docker rm -f packetbeat"
 RM_FILE="sudo rm /home/ubuntu/packetbeat.yml"
 
 # Ok, the command is huge. Let me break it down.
@@ -18,11 +18,11 @@ NODES=( $(sudo docker node ls | awk '{print $2}' | sed 's/*//g' | sed 's/Ready//
 
 for hostname in "${NODES[@]}"
 do
-    sudo docker-machine ssh $hostname $STOP_PACKETBEAT
+    sudo docker-machine ssh $hostname $RM_DOCKER
     sudo docker-machine ssh $hostname $RM_FILE 
     
-    echo "Stopped packetbeat service for node: $hostname"
+    echo "Done removing packetbeat container for node: $hostname"
 done
 
 # still, got to remove the packetbeat on this node as well
-$STOP_PACKETBEAT
+$RM_DOCKER
