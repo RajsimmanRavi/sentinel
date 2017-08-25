@@ -1,0 +1,12 @@
+version: "3"
+services:
+  elasticsearch:
+    image: perplexedgamer/elastic-savi:latest
+    ports:
+      - 9200:9200
+  kibana:
+    image: perplexedgamer/kibana-savi:latest
+    ports:
+      - 5601:5601
+    environment:
+      - ELASTICSEARCH_URL=http://10.11.1.19:9200

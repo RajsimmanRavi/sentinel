@@ -1,0 +1,10 @@
+version: "2"
+services:
+  packetbeat:
+    image: docker.elastic.co/beats/packetbeat:5.5.2 
+    deploy:
+      mode: global
+    volumes:
+      - /home/ubuntu/packetbeat.yml:/usr/share/packetbeat/packetbeat.yml
+    network_mode: "host"
+    cap_add: ['NET_RAW', 'NET_ADMIN']

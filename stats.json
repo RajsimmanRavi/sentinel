@@ -1,0 +1,14 @@
+{
+  "_id": "_design/stats",
+  "views": {
+    "all": {
+      "map": "function(doc) { emit(doc.start_time, doc.beat) }"
+    }
+    ,"src": {
+      "map": "function(doc){ emit(doc.start_time, doc.source) }"
+    }
+    ,"dest": {
+      "map": "function(doc){ emit(doc.start_time, doc.dest) }"
+    }
+  }
+}

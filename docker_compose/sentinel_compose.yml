@@ -1,0 +1,40 @@
+version: '3'
+services:
+  db:
+    image: couchdb
+    ports:
+      - "5984:5984"
+  zookeeper:
+    image: wurstmeister/zookeeper
+    deploy:
+      restart_policy:
+        condition: on-failure
+        window: 120s
+    ports:
+      - 2181:2181
+  kafka:
+    image: wurstmeister/kafka
+    deploy:
+      restart_policy:
+        condition: on-failure
+        window: 120s
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: 10.11.1.19
+      KAFKA_ADVERTISED_PORT: 9092
+      KAFKA_CREATE_TOPICS: "packetbeat:1:1"
+      KAFKA_ZOOKEEPER_CONNECT: 10.11.1.19:2181
+  consumer:
+    image: consumer
+    deploy:
+      restart_policy:
+        condition: on-failure
+        window: 120s
+    environment:
+      TOPIC: packetbeat 
+      KAFKA_BROKER: 10.11.1.19:9092
+      COUCH_IP: 10.11.1.19
+      DB_NAME: packetbeat
