@@ -6,44 +6,43 @@ if [[ ! $# -eq 2 ]] ; then
     exit 1
 fi
 
-HOSTNAME=`hostname`
 KAFKA_IP="$1"
 ELASTIC_IP="$2"
 PACKETBEAT_YML="/home/ubuntu/packetbeat.yml"
+DOCKER_CMD="sudo docker run -d -v ~/packetbeat.yml:/usr/share/packetbeat/packetbeat.yml --restart always --cap-add=NET_ADMIN --net=host --name packetbeat docker.elastic.co/beats/packetbeat:5.5.2"
 
-#remove the annoying 'sudo: unable to ...' warning 
-sudo sed -i "s/127.0.0.1 .*/127.0.0.1 localhost $HOSTNAME/g" /etc/hosts
+# First, insert ELASTIC_IP
+sed -i "s/hosts: \[\".*:9200\"\]/hosts: \[\"$ELASTIC_IP:9200\"\]/g" $PACKETBEAT_YML
 
-#check if packbetbeat docker container is running 
-packetbeat_docker=`sudo docker ps | grep packetbeat`
+# Second, insert KAFKA_IP  
+sed -i "s/hosts: \[\".*:9092\"\]/hosts: \[\"$KAFKA_IP:9092\"\]/g" $PACKETBEAT_YML
 
-#If the variable is empty, then docker container with 'packetbeat' string is not found. Hence, it is not installed.
-#That's why I check if it's empty. 
-if [ -z "$packetbeat_docker" ]
-then 
 
-    echo "
-output.elasticsearch:
-  hosts: ['$ELASTIC_IP:9200']
+# Ok, the command is huge. Let me break it down.
+# "docker node ls" gives us the nodes and it's hostnames.
+# awk {print $2" "$3} gives us only the hostnames.
+# sed 's/*//g' removes the asterisk
+# sed 's/Ready//g' removes the string "Ready" because we had that when we printed $3
+# sed 's/HOSTNAME//g' removes the string "HOSTNAME" from the title of the output
+# sed 's/STATUS//g' removes the string "STATUS" from the title of the output
+# sed '/^$/d'` removes empty lines from the output
 
-output.kafka:
-  # initial brokers for reading cluster metadata
-  hosts: ['$KAFKA_IP:9092']
+# Hence this provides only the hostnames of the nodes we want to deploy dockbeat and metricbeat.
+# Store this in an array
+NODES=( $(sudo docker node ls | awk '{print $2}' | sed 's/*//g' | sed 's/Ready//g' |sed 's/HOSTNAME//g' | sed 's/STATUS//g'| sed '/^$/d') )
 
-  # message topic selection + partitioning
-  topic: 'packetbeat'
-  partition.round_robin:
-  reachable_only: false
+for hostname in "${NODES[@]}"
+do
+    # send the packetbeat.yml file to the node
+    sudo docker-machine scp $PACKETBEAT_YML $hostname:~
 
-  required_acks: 1
-  compression: gzip
-  max_message_bytes: 1000000" >> $PACKETBEAT_YML
-  
-    echo "Packetbeat has been installed ad configured successfully!"
+    # start the packetbeat docker container 
+    sudo docker-machine ssh $hostname $DOCKER_CMD 
+    
+    echo "Started Packetbeat container for node: $hostname"
+done
 
-  #Command to run on each docker node after you scp the packetbeat.yml file
-  #sudo docker run -d -v ~/packetbeat.yml:/usr/share/packetbeat/packetbeat.yml --restart always --cap-add=NET_ADMIN --net=host docker.elastic.co/beats/packetbeat:5.5.2
-  
-else 
-    echo "Packetbeat has been installed and configured already!"
-fi
+#We still need to start the packetbeat container for this node itself
+$DOCKER_CMD
+
+echo "Successfully deployed Packetbeat on all the containers"

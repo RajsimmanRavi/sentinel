@@ -111,3 +111,18 @@ packetbeat.protocols.nfs:
 
 # Configure what outputs to use when sending the data collected by the beat.
 # Multiple outputs may be used.
+output.elasticsearch:
+  hosts: ['$ELASTIC_IP:9200']
+
+output.kafka:
+  # initial brokers for reading cluster metadata
+  hosts: ['$KAFKA_IP:9092']
+
+  # message topic selection + partitioning
+  topic: 'packetbeat'
+  partition.round_robin:
+  reachable_only: false
+
+  required_acks: 1
+  compression: gzip
+  max_message_bytes: 1000000" >> $PACKETBEAT_YML
