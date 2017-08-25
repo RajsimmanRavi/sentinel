@@ -8,8 +8,12 @@ fi
 
 KAFKA_IP="$1"
 ELASTIC_IP="$2"
+
+# make sure, the packetbeat.yml file has the following permissions: -rwx--x--x 
+# if not, do this: sudo chmod 711 packetbeat.yml
+
 PACKETBEAT_YML="/home/ubuntu/packetbeat.yml"
-DOCKER_CMD="sudo docker run -d -v ~/packetbeat.yml:/usr/share/packetbeat/packetbeat.yml --restart always --cap-add=NET_ADMIN --net=host --name packetbeat docker.elastic.co/beats/packetbeat:5.5.2"
+DOCKER_CMD="sudo docker run -d -v /home/ubuntu/packetbeat.yml:/usr/share/packetbeat/packetbeat.yml --restart always --cap-add=NET_ADMIN --net=host --name packetbeat docker.elastic.co/beats/packetbeat:5.5.2"
 
 # First, insert ELASTIC_IP
 sed -i "s/hosts: \[\".*:9200\"\]/hosts: \[\"$ELASTIC_IP:9200\"\]/g" $PACKETBEAT_YML
